@@ -1,0 +1,6 @@
+"./floating_point.obj"
+"./floating_point_library.obj"
+"./floating_point_wrapper.obj"
+"./tm4c123gh6pm_startup_ccs.obj"
+"../tm4c123gh6pm.cmd"
+-llibc.a

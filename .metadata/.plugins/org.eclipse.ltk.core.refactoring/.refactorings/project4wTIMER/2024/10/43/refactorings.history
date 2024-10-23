@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;project4/pwm_with_pwm_generator_library.s&apos; to &apos;pwm_with_general_purpose_timer_library.s&apos;" description="Rename resource &apos;pwm_with_pwm_generator_library.s&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="pwm_with_pwm_generator_library.s" name="pwm_with_general_purpose_timer_library.s" stamp="1729457491851" updateReferences="true"/>
+</session>

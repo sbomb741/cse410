@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="Rename resource &apos;project1/project1.s&apos; to &apos;floating_point.s&apos;" description="Rename resource &apos;project1.s&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="project1.s" name="floating_point.s" stamp="1725894882750" updateReferences="true"/>&#x0A;<refactoring comment="Rename resource &apos;project1/main.c&apos; to &apos;floating_point_wrapper.c&apos;" description="Rename resource &apos;main.c&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="main.c" name="floating_point_wrapper.c" stamp="1725894896444" updateReferences="true"/>
+</session>

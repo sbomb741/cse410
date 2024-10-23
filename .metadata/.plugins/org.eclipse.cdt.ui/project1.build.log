@@ -1,0 +1,8 @@
+
+**** Build of configuration Debug for project project1 ****
+
+/Applications/ti/ccs1260/ccs/utils/bin/gmake -k -j 7 all -O 
+ 
+gmake[1]: 'project1.out' is up to date.
+
+**** Build Finished ****

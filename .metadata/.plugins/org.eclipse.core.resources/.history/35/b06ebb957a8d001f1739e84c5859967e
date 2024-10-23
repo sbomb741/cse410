@@ -1,0 +1,646 @@
+; ==========================================================
+; DATA
+	.data
+
+	;GLOBALS
+
+;PROMPTS
+status:		.short 0x0
+colorCode:	.byte 0x3
+
+; ==========================================================
+; TEXT
+	.text
+
+	; GLOBALS
+	.global pwm_project
+	.global Timer0A_Handler
+	; GLOBALS (import)
+
+; POINTERS
+ptr2status:			.word status
+ptr2colorCode:		.word colorCode
+
+; DATA OFFSETS
+U0FR: 		.equ 0x18				; UART0 Flag Register
+CLK: 		.equ 0x608				; Clock Offset
+DIR: 		.equ 0x400				; Data Direction Offset (Input/Output)
+DEN: 		.equ 0x51C				; Digital Enable Offset
+DATA: 		.equ 0x3FC				; Data Register (LOW/HIGH)
+PUR:		.equ 0x510				; Pull-up Register
+EN0: 		.equ 0x100				; Interrupt Enable Register
+UARTIM:		.equ 0x038				; UART Interrupt Mask Register
+UARTICR:	.equ 0x044				; UART Interrupt Clear Register
+GPIOIS:		.equ 0x404				; GPIO Interrupt Sense Register (Edge Sensitivity)
+GPIOIBE:	.equ 0x408				; GPIO Interrupt Both Edges Register
+GPIOIV:		.equ 0x40C				; GPIO Interrupt Event Register (On Press[LOW] = 0, On Release[HIGH] = 1)
+GPIOIM:		.equ 0x410				; GPIO Interrupt Mask Register
+GPIOICR:	.equ 0x41C				; GPIO Interrupt Clear Register
+RCGCTIMER:  .equ 0x604				; Connect clock to timer
+GPTMCTL: 	.equ 0x00C				; Clock enable/disable
+GPTMTAMR:	.equ 0x004				; Periodic mode
+GPTMTAILR:	.equ 0x028				; Interval period
+GPTMIMR:	.equ 0x018				; Allow Timer to Interrupt
+GPTMICR:	.equ 0x024				; Timer Interrupt Clear Register
+RCGCDMA:	.equ 0x60C				; clock offset for DMA
+DMACFG:		.equ 0x004				; DMA controller offset A
+DMACTLBASE:	.equ 0x008				; DMA channel control base point
+DMAENASET:	.equ 0x028				; DMA channel enable
+DMASWREQ:	.equ 0x014				; DMA channel software request
+; PWM Offsets
+RCGCGPIO:	.equ 0x608
+RCGCPWM:	.equ 0x640
+GPIOAFSEL:	.equ 0x420
+GPIOPCTL:	.equ 0x52C
+RCC:		.equ 0x060
+PWM2CTL:	.equ 0x0C0
+PWM3CTL:	.equ 0x100
+PWM2GENB:	.equ 0x0E4
+PWM3GENA:	.equ 0x120
+PWM3GENB:	.equ 0x124
+PWM2LOAD:	.equ 0x0D0
+PWM3LOAD:	.equ 0x110
+PWM2CMPB:	.equ 0x0DC
+PWM3CMPA:	.equ 0x118
+PWM3CMPB:	.equ 0x11C
+PWMENABLE:	.equ 0x008
+DC1:		.equ 0x010
+
+
+; ==========================================================
+; SUBROUTINE - main pwm project
+pwm_project:
+	PUSH {r4-r12, lr}
+
+	; initializations
+	;bl pwm_RGB_init
+	bl RGB_init
+	bl timer_interrupt_init
+
+; infinite loop; to be interrupted by timer
+loop:
+	b loop
+
+	POP {r4-r12, lr}
+	mov pc, lr
+
+
+; SUBROUTINE - PWM RGB INITIALIZATION
+pwm_RGB_init:
+	PUSH {r4-r12, lr}
+	
+	; Adjust system clock
+	mov r4, #0xE000
+	movt r4, #0x400F				;
+	ldr r5, [r4, #DC1]
+	mov r6, #0x9					; System clock is 20MHz clock
+	bfi r5, r6, #12, #4
+	str r5, [r4, #DC1]
+	bl nops							; nop 5 times
+
+	; STEP 1: Enable PWM Clock
+	mov r4, #0xE000
+	movt r4, #0x400F
+	ldrb r5, [r4, #RCGCPWM]
+	mov r6, #0x02					; pwm module 0 is bit 0, module 1 is bit 1
+	orr r5, r5, r6
+	strb r5, [r4, #RCGCPWM]
+	bl nops							; nop 5 times
+
+	; STEP 2: Enable clock to GPIO module
+	mov r4, #0xE000
+	movt r4, #0x400F
+	ldrb r5, [r4, #RCGCGPIO]
+	mov r6, #0x20					; port f is bit 5
+	orr r5, r5, r6
+	strb r5, [r4, #RCGCGPIO]
+	bl nops							; nop 5 times
+
+	; STEP 3: Set GPIO pins to use alternate function (instead of standard GPIO)
+	mov r4, #0x5000
+	movt r4, #0x4002				; Port F Advanced Peripheral Bus (APB)
+	ldrb r5, [r4, #GPIOAFSEL]
+	mov r6, #0x0E					; set pins 1-3 to use alternate function (RGB pins)
+	orr r5, r5, r6
+	strb r5, [r4, #GPIOAFSEL]
+	bl nops							; nop 5 times
+
+	; STEP 4: Configure the alternate function to be PWM
+	mov r4, #0x5000
+	movt r4, #0x4002
+	ldr r5, [r4, #GPIOPCTL]
+	mov r6, #0x555
+	bfi r5, r6, #4, #12				; connect pins 1-3 to M1PWM5-7 by setting 5 for each pin
+	str r5, [r4, #GPIOPCTL]
+	bl nops							; nop 5 times
+
+	; STEP 5: Configure the Run-Mode Clock
+	mov r4, #0xE000
+	movt r4, #0x400F
+	ldr r5, [r4, #RCC]
+	mov r6, #0x8
+	bfi r5, r6, #17, #4				; set USEPWMDIV to 1, and set PWMDIV to 000, which is divide by 2 ([system clk = 20MHz]/2 = 10MHz clk)
+	str r5, [r4, #RCC]
+	bl nops							; nop 5 times
+
+	; STEP 6: Configure PWM generator for countdown mode
+	; STEP 6a: Disable pwm
+	mov r4, #0x9000
+	movt r4, #0x4002				; PWM M1
+	mov r5, #0
+	str r5, [r4, #PWM2CTL]			; disable pwm generation for pwm m1 generator2
+	bl nops							; nop 5 times
+	str r5, [r4, #PWM3CTL]			; disable pwm generation for pwm m1 generator3
+	bl nops							; nop 5 times
+	; STEP 6b: Configure the what pwm does at comparator values
+	; pin 2
+	mov r4, #0x9000
+	movt r4, #0x4002				; PWM M1
+	ldr r5, [r4, #3]
+	mov r6, #0x0C2					; ACTCMPAD drives pwm high, ACTZERO drives pwm low
+	bfi r5, r6, #0, #12
+	str r5, [r4, #PWM3GENA]
+	bl nops							; nop 5 times
+	; pin 1
+	mov r4, #0x9000
+	movt r4, #0x4002				; PWM M1
+	ldr r5, [r4, #PWM2GENB]
+	mov r6, #0xC02					; ACTCMPBD drives pwm high, ACTZERO drives pwm low
+	bfi r5, r6, #0, #12
+	str r5, [r4, #PWM2GENB]
+	bl nops							; nop 5 times
+	; pin 3
+	mov r4, #0x9000
+	movt r4, #0x4002				; PWM M1
+	ldr r5, [r4, #PWM3GENB]
+	mov r6, #0xC02					; ACTCMPBD drives pwm high, ACTZERO drives pwm low
+	bfi r5, r6, #0, #12
+	str r5, [r4, #PWM3GENB]
+	bl nops							; nop 5 times
+
+	; STEP 7: Load the timer value (desired period - 1)
+	mov r4, #0x9000
+	movt r4, #0x4002				; PWM M1
+	mov r5, #0x191					; (400-1 0x18F) clock ticks per period
+	strh r5, [r4, #PWM2LOAD]
+	bl nops							; nop 5 times
+	strh r5, [r4, #PWM3LOAD]
+	bl nops							; nop 5 times
+
+	; STEP 8: Set the pulse width of each pin
+	mov r4, #0x9000
+	movt r4, #0x4002				; PWM M1
+	mov r5, #0x190					; keep red high
+	strh r5, [r4, #PWM2CMPB]
+	bl nops							; nop 5 times
+	mov r5, #0x190					; keep blue high
+	strh r5, [r4, #PWM3CMPA]
+	bl nops							; nop 5 times
+	mov r5, #0x190					; keep green high
+	strh r5, [r4, #PWM3CMPB]
+	bl nops							; nop 5 times
+
+	; STEP 9: Start the Timers
+	mov r4, #0x9000
+	movt r4, #0x4002				; PWM M1
+	mov r5, #1
+	strb r5, [r4, #PWM2CTL]			; enable pwm generation for pwm m1 generator2
+	bl nops							; nop 5 times
+	strb r5, [r4, #PWM3CTL]			; enable pwm generation for pwm m1 generator3
+	bl nops							; nop 5 times
+
+	; STEP 10: Enable PWM Outputs
+	mov r4, #0x9000
+	movt r4, #0x4002				; PWM M1
+	mov r5, #0xE0
+	strb r5, [r4, #PWMENABLE]		; enable pwm generation for pwm5 pwm6 pwm7
+	bl nops							; nop 5 times
+
+	POP {r4-r12,lr}
+	mov pc,lr
+
+; # - color		R/G/B
+; 1 - orange 	100/50/0
+; 2 - magenta	100/0/50
+; 3 - brown		60/30/0
+; 4 - purple
+
+Timer0A_Handler:
+	PUSH {r4-r12, lr}
+
+	; clear the interrupt
+	mov r4, #0x0000
+	movt r4, #0x4003				; Set r4 = Timer Interrupt Clear Register
+	ldrb r5, [r4, #GPTMICR]			; Load byte from Clear register
+	orr r5, r5, #0x01				; Set bit 0 to disable.
+	strb r5, [r4, #GPTMICR]			; Store new data back into register.
+
+	; get the color in the RGB
+	mov r4, #0x5000
+    movt r4, #0x4002			; Initialize r4 as Port F Base Address.
+    ldrb r5, [r4, #DATA]			; load RGB color
+
+	; load color code
+	ldr r6, ptr2colorCode
+	ldrb r7, [r6]					; colorCode byte
+
+	cmp r7, #1
+	beq orange
+
+	cmp r7, #2
+	beq magenta
+
+	cmp r7, #3
+	beq peach
+
+
+orange:
+	cmp r5, #0x2
+	beq orange_green_on
+	mov r7, #0x2				; red only
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+orange_green_on:
+	mov r7, #0xA				; green and red
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+
+magenta:
+	cmp r5, #0x2
+	beq magenta_blue_on
+	mov r7, #0x2				; red only
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+magenta_blue_on:
+	mov r7, #0x6				; blue and red
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+
+peach:
+	cmp r5, #0x2
+	beq peach_all_on
+	mov r7, #0x2				; red only
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+peach_all_on:
+	mov r7, #0xE				; all on
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+
+purple:
+	cmp r5, #0x4
+	beq purple_all_on
+	mov r7, #0x4				; blue only
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+purple_all_on:
+	mov r7, #0x6				; blue and red
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+
+cyan:
+	cmp r5, #0x4
+	beq cyan_green_on
+	mov r7, #0x4				; blue only
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+cyan_green_on:
+	mov r7, #0xC				; blue and green
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+
+
+light_blue:
+	cmp r5, #0x4
+	beq light_blue_all_on
+	mov r7, #0x4				; blue only
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+light_blue_all_on:
+	mov r7, #0xE				; all on
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+
+
+mint_green:
+	cmp r5, #0x8
+	beq mint_green_all_on
+	mov r7, #0x8				; green only
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+mint_green_all_on:
+	mov r7, #0xE				; all on
+	strb r7, [r4, #DATA]		; store value
+	b timer_handler_done
+
+
+
+
+; SUBROUTINE - TIMER HANDLER (rainbow pwm)
+a_Timer0A_Handler:
+	PUSH {r4-r12, lr}
+
+	; clear the interrupt
+	mov r4, #0x0000
+	movt r4, #0x4003				; Set r4 = Timer Interrupt Clear Register
+	ldrb r5, [r4, #GPTMICR]			; Load byte from Clear register
+	orr r5, r5, #0x01				; Set bit 0 to disable.
+	strb r5, [r4, #GPTMICR]			; Store new data back into register.
+
+	; standard registers through timer interupt calls
+	mov r4, #0x9000
+	movt r4, #0x4002				; PWM M1
+	mov r5, #400					; max load value
+	mov r7, #40						; increment/decrement value
+
+	; jump to correct spot
+	ldr r0, ptr2status
+	ldrb r1, [r0]
+	cmp r1, #8
+	beq ch8
+	cmp r1, #7
+	beq ch7
+	cmp r1, #6
+	beq ch6
+	cmp r1, #5
+	beq ch5
+	cmp r1, #4
+	beq ch4
+	cmp r1, #3
+	beq ch3
+	cmp r1, #2
+	beq ch2
+	cmp r1, #1
+	beq ch1
+
+; COLOR: WHITE 100% 
+; decrement green and blue
+ch0:
+	; blue
+	ldrh r6, [r4, #PWM3CMPA]
+	sub r6, r6, r7
+	strh r6, [r4, #PWM3CMPA]
+	; green
+	ldrh r6, [r4, #PWM3CMPB]
+	sub r6, r6, r7
+	strh r6, [r4, #PWM3CMPB]
+	; cmp
+	cmp r6, #0
+	ble ich0
+	b timer_handler_done
+ich0:
+	; store status for next iteration
+	mov r6, #0
+	strh r6, [r4, #PWM3CMPA]
+	strh r6, [r4, #PWM3CMPB]
+	mov r1, #1
+	strb r1, [r0]
+	b timer_handler_done
+
+; COLOR: RED
+; increment green
+ch1:
+	ldrh r6, [r4, #PWM3CMPB]
+	add r6, r6, r7
+	strh r6, [r4, #PWM3CMPB]
+	cmp r6, r5
+	bge ich1
+	b timer_handler_done
+ich1:
+	; store status for next iteration
+	strh r5, [r4, #PWM3CMPB]
+	mov r1, #2
+	strb r1, [r0]
+	b timer_handler_done
+
+; COLOR ORANGE/YELLOW
+; decrement red
+ch2:
+	ldrh r6, [r4, #PWM2CMPB]
+	sub r6, r6, r7
+	strh r6, [r4, #PWM2CMPB]
+	cmp r6, #0
+	ble ich2
+	b timer_handler_done
+ich2:
+	; store status for next iteration
+	mov r6, #0
+	strh r6, [r4, #PWM2CMPB]
+	mov r1, #3
+	strb r1, [r0]
+	b timer_handler_done
+
+; COLOR: GREEN
+; increment blue
+ch3:
+	add r7, r7, r7						; change increment to double speed
+	ldrh r6, [r4, #PWM3CMPA]
+	add r6, r6, r7
+	strh r6, [r4, #PWM3CMPA]
+	cmp r6, r5
+	bge ich3
+	b timer_handler_done
+ich3:
+	; store status for next iteration
+	strh r5, [r4, #PWM3CMPA]
+	mov r1, #4
+	strb r1, [r0]
+	b timer_handler_done
+
+; COLOR: CYAN
+; decrement green
+ch4:
+	add r7, r7, r7						; change increment to double speed
+	ldrh r6, [r4, #PWM3CMPB]
+	sub r6, r6, r7
+	strh r6, [r4, #PWM3CMPB]
+	cmp r6, #0
+	ble ich4
+	b timer_handler_done
+ich4:
+	; store status for next iteration
+	mov r6, #0
+	strh r6, [r4, #PWM3CMPB]
+	mov r1, #5
+	strb r1, [r0]
+	b timer_handler_done
+
+; COLOR: BLUE
+; increment red
+ch5:
+	ldrh r6, [r4, #PWM2CMPB]
+	add r6, r6, r7
+	strh r6, [r4, #PWM2CMPB]
+	cmp r6, r5
+	bge ich5
+	b timer_handler_done
+ich5:
+	; store status for next iteration
+	strh r5, [r4, #PWM2CMPB]
+	mov r1, #6
+	strb r1, [r0]
+	b timer_handler_done
+
+; COLOR PURPLE
+; decrement blue to 50%
+ch6:
+	mov r8, #2
+	udiv r8, r5, r8						; change cmp to 50% of r5 - max load value
+	ldrh r6, [r4, #PWM3CMPA]
+	sub r6, r6, r7
+	strh r6, [r4, #PWM3CMPA]
+	cmp r6, r8
+	ble ich6
+	b timer_handler_done
+ich6:
+	; store status for next iteration
+	mov r6, r8
+	strh r6, [r4, #PWM3CMPA]			; store 50%
+	mov r1, #7
+	strb r1, [r0]
+	b timer_handler_done
+
+; COLOR: PINK
+; increment green to 50%
+ch7:
+	mov r8, #2
+	udiv r8, r5, r8						; change cmp to 50% of r5 - max load value
+	ldrh r6, [r4, #PWM3CMPB]
+	add r6, r6, r7
+	strh r6, [r4, #PWM3CMPB]
+	cmp r6, r8
+	bge ich7
+	b timer_handler_done
+ich7:
+	; store status for next iteration
+	mov r6, r8
+	strh r6, [r4, #PWM3CMPB]			; store 50%
+	mov r1, #8
+	strb r1, [r0]
+	b timer_handler_done
+
+; COLOR: WHITE 67%
+; increment green and blue
+ch8:
+	; blue
+	ldrh r6, [r4, #PWM3CMPA]
+	add r6, r6, r7
+	strh r6, [r4, #PWM3CMPA]
+	; green
+	ldrh r6, [r4, #PWM3CMPB]
+	add r6, r6, r7
+	strh r6, [r4, #PWM3CMPB]
+	cmp r6, r5
+	bge ich8
+	b timer_handler_done
+ich8:
+	; store status for next iteration
+	strh r5, [r4, #PWM3CMPA]
+	strh r5, [r4, #PWM3CMPB]
+	mov r1, #0
+	strb r1, [r0]
+	b timer_handler_done
+
+; exit handler
+timer_handler_done:
+	POP {r4-r12, lr}
+	bx lr
+
+
+; SUBROUTINE - NOPS (5 no ops)
+nops:
+	PUSH {r4-r12, lr}
+	nop
+	nop
+	nop
+	nop
+	POP {r4-r12,lr}
+	mov pc,lr
+
+
+; SUBROUTINE - RGB INIT
+RGB_init:
+	PUSH {r4-r12,lr}
+
+	; enable clock for gpio port F
+	mov r0, #0xE000
+	movt r0, #0x400F			; base address for gpio clock control
+	mov r1, #0x20				; port f bin
+	strb r1, [r0, #CLK]		; store pin 5 to enable clock for port f
+
+	; set pins 1-3 RGB pins to outputs - allows you to drive the value
+    mov r0, #0x5000
+    movt r0, #0x4002			; r0 set as Port F base address.
+    ldrb r4, [r0, #DIR]			; Load Port F Direction Pin Data.
+    orr r4, r4, #0x0E			; ORR 0x0E with Direction Pin Data to set Pins 1-3 as Outputs.
+    strb r4, [r0, #DIR]			; Store new Direction Pin Data.
+
+   	; configure to digital pins - 0 or 1
+   	ldrb r4, [r0, #DEN]			; Load Port F Digital Enable Pin Data.
+   	orr r4, r4, #0xE			; ORR 0xE with Digital Enable Pin Data to set Pins 1-3 to Digital.
+   	strb r4, [r0, #DEN]			; Store new Digital Enable Pin Data.
+
+   	POP {r4-r12,lr}
+   	mov pc, lr
+
+
+; SUBROUTINE - TIMER INTERRUPT INITIALIZATION (.1s second interval)
+timer_interrupt_init:
+	PUSH {r4-r12, lr}
+
+	; provide clock for timer 0
+	MOV r4, #0xE000
+	MOVT r4, #0x400F				; Set r4 = RCGCTIMER
+	LDRB r5, [r4, #RCGCTIMER]		; Load byte from RCGCTIMER.
+	ORR r5, r5, #0x01				; Set bit 0 of RCGCTIMER.
+	STRB r5, [r4, #RCGCTIMER]		; Store new data back into register.
+
+	; disable clock during setup
+	MOV r4, #0x0000
+	MOVT r4, #0x4003				; Set r4 = GPTMCTL
+	LDRB r5, [r4, #GPTMCTL]			; Load byte from Clock enable/disable register
+	AND r5, r5, #0xFE				; Clear bit 0 to disable.
+	STRB r5, [r4, #GPTMCTL]			; Store new data back into register.
+
+	; set to config 0
+	LDRB r5, [r4]					; Load byte from from Timer Configuration Register
+	AND r5, r5, #0xF8				; Clear bits 2:0 for configuration 0.
+	STRB r5, [r4]					; Store new data back into register.
+
+	; set to periodic mode
+	LDRB r5, [r4, #GPTMTAMR]		; Load byte from Timer Mode Register
+	AND r5, r5, #0xFE				; Clear bit 0.
+	ORR r5, r5, #0x02				; Set bit 1. '10' = 2 for Periodic Mode
+	STRB r5, [r4, #GPTMTAMR]		; Store new data back into register.
+
+	; set timer interval
+	MOV r5, #0x7100					; Set interval value for 160k, or .01s
+	MOVT r5, #0x0002
+	STR r5, [r4, #GPTMTAILR]		; Store new data back into Interval Period Register.
+
+	; allow timer interrupts
+	LDRB r5, [r4, #GPTMIMR]			; Load byte from Allow Timer to Interrupt Register
+	ORR r5, r5, #0x01				; Set bit 0.
+	STRB r5, [r4, #GPTMIMR]			; Store new data back into register.
+
+	; enable interrupts processor side
+	MOV r4, #0xE000
+	MOVT r4, #0xE000				; Set r4 = Interrupt Enable base address.
+	LDR r5, [r4, #EN0]				; Load byte of Interrupt Enable Register.
+	MOV r6, #0x0000
+	MOVT r6, #0x0008
+	ORR r5, r5, r6					; Set Timer0A Bit 19 (0x00080000).
+	STR r5, [r4, #EN0]				; Store new data back into register.
+
+	; enable timer
+	MOV r4, #0x0000
+	MOVT r4, #0x4003				; Set r4 = GPTMCTL
+	LDRB r5, [r4, #GPTMCTL]			; Load byte from Clock enable/disable register
+	ORR r5, r5, #0x01				; Set bit 0 to enable.
+	STRB r5, [r4, #GPTMCTL]			; Store new data back into register.
+
+	POP {r4-r12, lr}
+	MOV pc, lr
+
+
+	.end

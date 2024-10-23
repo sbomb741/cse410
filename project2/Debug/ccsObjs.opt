@@ -1,0 +1,6 @@
+"./keypad_project.obj"
+"./keypad_project_library.obj"
+"./keypad_project_wrapper.obj"
+"./tm4c123gh6pm_startup_ccs.obj"
+"../tm4c123gh6pm.cmd"
+-llibc.a

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;project4/main.c&apos; to &apos;pwm_with_general_purpose_timer_wrapper.c&apos;" description="Rename resource &apos;main.c&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="main.c" name="pwm_with_general_purpose_timer_wrapper.c" stamp="1729010150112" updateReferences="true"/>
+</session>

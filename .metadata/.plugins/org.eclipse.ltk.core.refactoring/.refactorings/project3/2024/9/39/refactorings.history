@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="Rename resource &apos;project3/main.c&apos; to &apos;dma_wrapper.c&apos;" description="Rename resource &apos;main.c&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="main.c" name="dma_wrapper.c" stamp="1727272903807" updateReferences="true"/>&#x0A;<refactoring comment="Rename resource &apos;project3/keypad_project_library.s&apos; to &apos;dma_library.s&apos;" description="Rename resource &apos;keypad_project_library.s&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="keypad_project_library.s" name="dma_library.s" stamp="1727272981674" updateReferences="true"/>
+</session>

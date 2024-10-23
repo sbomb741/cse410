@@ -1,0 +1,215 @@
+******************************************************************************
+                  TI ARM Linker Unix v20.2.7                   
+******************************************************************************
+>> Linked Tue Oct 22 15:21:25 2024
+
+OUTPUT FILE NAME:   <project4.out>
+ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 00000dc1
+
+
+MEMORY CONFIGURATION
+
+         name            origin    length      used     unused   attr    fill
+----------------------  --------  ---------  --------  --------  ----  --------
+  FLASH                 00000000   00040000  000010bc  0003ef44  R  X
+  SRAM                  20000000   00008000  000005fe  00007a02  RW X
+
+
+SEGMENT ALLOCATION MAP
+
+run origin  load origin   length   init length attrs members
+----------  ----------- ---------- ----------- ----- -------
+00000000    00000000    000010bc   000010bc    r-x
+  00000000    00000000    0000026c   0000026c    r-- .intvecs
+  0000026c    0000026c    00000bb4   00000bb4    r-x .text
+  00000e20    00000e20    0000029c   0000029c    r-- .cinit
+20000000    20000000    00000600   00000000    rw-
+  20000000    20000000    000003fe   00000000    rw- .data
+  20000400    20000400    00000200   00000000    rw- .stack
+
+
+SECTION ALLOCATION MAP
+
+ output                                  attributes/
+section   page    origin      length       input sections
+--------  ----  ----------  ----------   ----------------
+.intvecs   0    00000000    0000026c     
+                  00000000    0000026c     tm4c123gh6pm_startup_ccs.obj (.intvecs)
+
+.text      0    0000026c    00000bb4     
+                  0000026c    000005ec     pwm_with_general_purpose_timer_library.obj (.text)
+                  00000858    0000041e     pwm_with_general_purpose_timer.obj (.text)
+                  00000c76    0000009c     rtsv7M4_T_le_v4SPD16_eabi.lib : memcpy_t2.asm.obj (.text)
+                  00000d12    00000068                                   : copy_decompress_lzss.c.obj (.text:decompress:lzss:__TI_decompress_lzss)
+                  00000d7a    00000002     --HOLE-- [fill = 0]
+                  00000d7c    00000044                                   : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit:__TI_auto_init_nobinit_nopinit)
+                  00000dc0    00000034                                   : boot_cortex_m.c.obj (.text:_c_int00_noargs:_c_int00_noargs)
+                  00000df4    0000000e                                   : copy_decompress_none.c.obj (.text:decompress:none:__TI_decompress_none)
+                  00000e02    0000000c     tm4c123gh6pm_startup_ccs.obj (.text)
+                  00000e0e    0000000a     pwm_with_general_purpose_timer_wrapper.obj (.text)
+                  00000e18    00000004     rtsv7M4_T_le_v4SPD16_eabi.lib : pre_init.c.obj (.text:_system_pre_init)
+                  00000e1c    00000004                                   : exit.c.obj (.text:abort:abort)
+
+.cinit     0    00000e20    0000029c     
+                  00000e20    00000289     (.cinit..data.load) [load image, compression = lzss]
+                  000010a9    00000003     --HOLE-- [fill = 0]
+                  000010ac    00000008     (__TI_handler_table)
+                  000010b4    00000008     (__TI_cinit_table)
+
+.init_array 
+*          0    00000000    00000000     UNINITIALIZED
+
+.data      0    20000000    000003fe     UNINITIALIZED
+                  20000000    000003fe     pwm_with_general_purpose_timer.obj (.data)
+
+.stack     0    20000400    00000200     UNINITIALIZED
+                  20000400    00000004     rtsv7M4_T_le_v4SPD16_eabi.lib : boot_cortex_m.c.obj (.stack)
+                  20000404    000001fc     --HOLE--
+
+__llvm_prf_cnts 
+*          0    20000000    00000000     UNINITIALIZED
+
+MODULE SUMMARY
+
+       Module                                       code   ro data   rw data
+       ------                                       ----   -------   -------
+    ./
+       pwm_with_general_purpose_timer.obj           1054   0         1022   
+       pwm_with_general_purpose_timer_library.obj   1516   0         0      
+       tm4c123gh6pm_startup_ccs.obj                 12     620       0      
+       pwm_with_general_purpose_timer_wrapper.obj   10     0         0      
+    +--+--------------------------------------------+------+---------+---------+
+       Total:                                       2592   620       1022   
+                                                                            
+    /Applications/ti/ccs1260/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/lib/rtsv7M4_T_le_v4SPD16_eabi.lib
+       memcpy_t2.asm.obj                            156    0         0      
+       copy_decompress_lzss.c.obj                   104    0         0      
+       autoinit.c.obj                               68     0         0      
+       boot_cortex_m.c.obj                          52     0         0      
+       copy_decompress_none.c.obj                   14     0         0      
+       exit.c.obj                                   4      0         0      
+       pre_init.c.obj                               4      0         0      
+    +--+--------------------------------------------+------+---------+---------+
+       Total:                                       402    0         0      
+                                                                            
+       Stack:                                       0      0         512    
+       Linker Generated:                            0      665       0      
+    +--+--------------------------------------------+------+---------+---------+
+       Grand Total:                                 2994   1285      1534   
+
+
+LINKER GENERATED COPY TABLES
+
+__TI_cinit_table @ 000010b4 records: 1, size/record: 8, table size: 8
+	.data: load addr=00000e20, load size=00000289 bytes, run addr=20000000, run size=000003fe bytes, compression=lzss
+
+
+LINKER GENERATED HANDLER TABLE
+
+__TI_handler_table @ 000010ac records: 2, size/record: 4, table size: 8
+	index: 0, handler: __TI_decompress_lzss
+	index: 1, handler: __TI_decompress_none
+
+
+GLOBAL SYMBOLS: SORTED ALPHABETICALLY BY Name 
+
+address   name                          
+-------   ----                          
+00000e1d  C$$EXIT                       
+00000451  RGB_LED_init                  
+00000e03  ResetISR                      
+00000ba7  Timer0A_Handler               
+00000bcf  UART0_Handler                 
+20000600  __STACK_END                   
+00000200  __STACK_SIZE                  
+20000600  __STACK_TOP                   
+000010b4  __TI_CINIT_Base               
+000010bc  __TI_CINIT_Limit              
+000010ac  __TI_Handler_Table_Base       
+000010b4  __TI_Handler_Table_Limit      
+00000d7d  __TI_auto_init_nobinit_nopinit
+00000d13  __TI_decompress_lzss          
+00000df5  __TI_decompress_none          
+ffffffff  __TI_pprof_out_hndl           
+ffffffff  __TI_prof_data_size           
+ffffffff  __TI_prof_data_start          
+00000000  __TI_static_base__            
+00000c77  __aeabi_memcpy                
+00000c77  __aeabi_memcpy4               
+00000c77  __aeabi_memcpy8               
+ffffffff  __binit__                     
+ffffffff  __c_args__                    
+UNDEFED   __mpu_init                    
+20000400  __stack                       
+20000000  __start___llvm_prf_cnts       
+20000000  __stop___llvm_prf_cnts        
+00000dc1  _c_int00_noargs               
+UNDEFED   _system_post_cinit            
+00000e19  _system_pre_init              
+00000e1d  abort                         
+ffffffff  binit                         
+00000000  g_pfnVectors                  
+00000e0f  main                          
+00000c77  memcpy                        
+0000066b  nops                          
+000006f1  output_string                 
+0000026d  pwm_RGB_LED_deinit            
+000002c1  pwm_RGB_LED_init              
+00000895  pwm_project                   
+0000048b  pwm_timer_interrupt_init      
+0000050b  timer_interrupt_init          
+000005bd  uart_init                     
+0000058b  uart_interrupt_init           
+
+
+GLOBAL SYMBOLS: SORTED BY Symbol Address 
+
+address   name                          
+-------   ----                          
+00000000  __TI_static_base__            
+00000000  g_pfnVectors                  
+00000200  __STACK_SIZE                  
+0000026d  pwm_RGB_LED_deinit            
+000002c1  pwm_RGB_LED_init              
+00000451  RGB_LED_init                  
+0000048b  pwm_timer_interrupt_init      
+0000050b  timer_interrupt_init          
+0000058b  uart_interrupt_init           
+000005bd  uart_init                     
+0000066b  nops                          
+000006f1  output_string                 
+00000895  pwm_project                   
+00000ba7  Timer0A_Handler               
+00000bcf  UART0_Handler                 
+00000c77  __aeabi_memcpy                
+00000c77  __aeabi_memcpy4               
+00000c77  __aeabi_memcpy8               
+00000c77  memcpy                        
+00000d13  __TI_decompress_lzss          
+00000d7d  __TI_auto_init_nobinit_nopinit
+00000dc1  _c_int00_noargs               
+00000df5  __TI_decompress_none          
+00000e03  ResetISR                      
+00000e0f  main                          
+00000e19  _system_pre_init              
+00000e1d  C$$EXIT                       
+00000e1d  abort                         
+000010ac  __TI_Handler_Table_Base       
+000010b4  __TI_CINIT_Base               
+000010b4  __TI_Handler_Table_Limit      
+000010bc  __TI_CINIT_Limit              
+20000000  __start___llvm_prf_cnts       
+20000000  __stop___llvm_prf_cnts        
+20000400  __stack                       
+20000600  __STACK_END                   
+20000600  __STACK_TOP                   
+ffffffff  __TI_pprof_out_hndl           
+ffffffff  __TI_prof_data_size           
+ffffffff  __TI_prof_data_start          
+ffffffff  __binit__                     
+ffffffff  __c_args__                    
+ffffffff  binit                         
+UNDEFED   __mpu_init                    
+UNDEFED   _system_post_cinit            
+
+[45 symbols]
